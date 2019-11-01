@@ -98,6 +98,8 @@ class mops_conf:
                     self.date_previous = self.date_last
                 else:
                     self.date_previous = conf_date[-2]
+            else:
+                self.date_previous = conf_date[-1]
 
     def path_set(self):
         self.previous_path = "{}/conf-future-{}.html".format(self.conf_dir, self.date_previous.strftime("%Y-%m-%d"))
