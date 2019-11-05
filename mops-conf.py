@@ -128,8 +128,8 @@ class mops_conf:
         }
         with open(file_path, "rb") as ef:
             input_encoding = detect(ef.read())["encoding"]
-        with open(file_path, "rb") as ef:
-            input_encoding = detect(ef.read())["encoding"]
+            if input_encoding.lower() == "big5":
+                input_encoding = "cp950"
         temp_path = "{}.tmp".format(file_path)
         with open(file_path, "r", encoding=input_encoding) as sourceFile, \
             open(temp_path, "w", encoding="utf-8") as targetFile:
