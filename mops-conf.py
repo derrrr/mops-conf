@@ -158,7 +158,7 @@ class mops_conf:
             "off": "1",
             "TYPEK": "all",
             "year": payload_datetime.year - 1911,
-            "month": payload_datetime.month,
+            "month": "{:02d}".format(payload_datetime.month),
             "co_id": ""
         }
         return payload
