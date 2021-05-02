@@ -12,8 +12,6 @@ import pandas as pd
 from bs4 import BeautifulSoup as BS
 from chardet import detect
 from datetime import datetime, date, timedelta
-from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
 from dateutil.relativedelta import relativedelta
 
 def _load_config():
@@ -24,20 +22,10 @@ def _load_config():
     config.read_file(codecs.open(config_path, "r", config_encoding))
     return config
 
-def _requests_retry_session(config, retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
+def _requests_session(config, status_forcelist=(500, 502, 504), session=None):
     session = requests.session()
     headers = {"user-agent": config["Requests_header"]["user-agent"]}
     session.headers.update(headers)
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=status_forcelist
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
     return session
 
 def multiple_replace(sub_dict, text):
@@ -154,7 +142,7 @@ class mops_conf:
         payload = {
             "encodeURIComponent": "1",
             "step": "1",
-               "firstin": "1",
+            "firstin": "1",
             "off": "1",
             "TYPEK": "all",
             "year": payload_datetime.year - 1911,
@@ -165,6 +153,7 @@ class mops_conf:
 
     def get_conf(self, payload):
         url = "https://mops.twse.com.tw/mops/web/t100sb02_1"
+        # res = self.rs.post(url, data=payload, verify=False)
         res = self.rs.post(url, data=payload)
         soup = BS(res.text, "lxml")
 
@@ -203,7 +192,7 @@ class mops_conf:
         payload.append(self.post_payload(datetime.now()))
         payload.append(self.post_payload(datetime.now() + relativedelta(months=1)))
 
-        self.rs = _requests_retry_session(self.config)
+        self.rs = _requests_session(self.config)
         dfs = []
         sleep = 0
         for post_data in payload:
@@ -239,12 +228,9 @@ class mops_conf:
         df_1 = pd.read_html(self.last_path, encoding="utf-8")[0]
         df_2 = pd.read_html(self.previous_path, encoding="utf-8")[0]
         df_1_2 = df_1.merge(df_2, on="代號", how="left", indicator=True)
-        df_1_not_2 = df_1_2[df_1_2["_merge"] == "left_only"].drop(columns=["_merge"])
-        df_1_not_2.drop(df_1_not_2.columns[11:], axis=1, inplace=True)
-        cols_x = df_1_not_2.columns.to_list()
-        cols_x = [col.replace("_x", "") for col in cols_x]
-        df_1_not_2.columns = cols_x
-        df_1_not_2.fillna("", inplace=True)
+        df_1_not_2 = df_1_2[df_1_2["_merge"] == "left_only"]
+        df_1_not_2.columns = df_1_not_2.columns.str.replace("_x", "")
+        df_1_not_2 = df_1_not_2.drop(list(df_1_not_2.filter(regex = "_")), axis = 1, inplace = False).fillna("", inplace=False)
 
         df_c = df_1_not_2.copy()
         df_c["中文簡報"] = df_1_not_2["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
