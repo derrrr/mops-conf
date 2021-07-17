@@ -6,12 +6,14 @@ import codecs
 import random
 import shutil
 import smtplib
-import configparser
 import requests
+import itertools
+import configparser
 import pandas as pd
 from bs4 import BeautifulSoup as BS
 from chardet import detect
 from datetime import datetime, date, timedelta
+from urlextract import URLExtract
 from dateutil.relativedelta import relativedelta
 
 def _load_config():
@@ -52,6 +54,16 @@ class mops_conf:
 
     def hyperlink(self, text, url):
         return '<a href="{}">{}</a>'.format(url, text)
+
+    def hyper_url(self, text):
+        if text == "":
+            return ""
+        extractor = URLExtract()
+        hyper_dict = list(map(self.hyperlink, extractor.find_urls(text), extractor.find_urls(text)))
+        if not hyper_dict:
+            return text
+        rep = dict(zip(extractor.find_urls(text), hyper_dict))
+        return multiple_replace(rep, text)
 
     def dir_set(self):
         self.conf_dir = "./conf"
@@ -138,13 +150,13 @@ class mops_conf:
         with open(file_path, "w", encoding="utf-8") as save:
             save.write(soup.prettify())
 
-    def post_payload(self, payload_datetime):
+    def post_payload(self, market_type, payload_datetime):
         payload = {
             "encodeURIComponent": "1",
             "step": "1",
             "firstin": "1",
             "off": "1",
-            "TYPEK": "all",
+            "TYPEK": market_type,
             "year": payload_datetime.year - 1911,
             "month": "{:02d}".format(payload_datetime.month),
             "co_id": ""
@@ -163,25 +175,30 @@ class mops_conf:
             table = soup.find_all("table", {"class": "hasBorder"})[0]
             df = pd.read_html(table.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
             df.columns = df.columns.droplevel()
-            drop_col = [i for i in df.columns if i.startswith("影音連結")]
-            df.drop(drop_col, axis=1, inplace=True)
             cols = ["代號", "名稱", "法說日期", "法說時間", "法說地點", "法說訊息", \
                 "中文簡報", "英文簡報", \
-                "公司網站相關資訊", "其他應敘明事項", "歷年法說"]
-            df.columns = cols
+                "公司網站相關資訊", "影音連結", "其他應敘明事項", "歷年法說"]
+            if [i for i in df.columns if i.startswith("影音連結")]:
+                df.columns = cols
+            else:
+                df.columns = [i for i in cols if not i.startswith("影音連結")]
             df["代號"] = df["代號"].astype("str")
             df = df[~(df["代號"] == "公司代號")]
             df["temp"] = df["法說日期"].str[-9:]
             df["temp"] = df["temp"].apply(lambda x: "{}{}".format(str(int(x[:3])+1911), x[3:]))
             df["temp"] = pd.to_datetime(df["temp"], format="%Y/%m/%d")
             df_future = df[df["temp"] >=  pd.Timestamp(date.today())]
+            df_temp = df_future.fillna("", inplace=False)
 
             df_c = df_future.copy()
             df_c["中文簡報"] = df_future["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
             df_c["英文簡報"] = df_future["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
             df_c["公司網站相關資訊"] = df_future["公司網站相關資訊"].apply(lambda x: self.hyperlink(x, "{}".format(x, x)) if "無" not in x else x)
+            if [i for i in df_temp.columns if i.startswith("影音連結")]:
+                df_c["影音連結"] = df_temp["影音連結"].apply(lambda x: self.hyper_url(x))
             df_c.drop(labels=["歷年法說"], axis=1, inplace=True)
             df_c["代號"] = df_c["代號"].astype("int64")
+
         return df_c
 
     def coming_conf(self):
@@ -189,23 +206,25 @@ class mops_conf:
         max_sleep = float(self.config["Sleep_time"]["max"])
 
         payload = []
-        payload.append(self.post_payload(datetime.now()))
-        payload.append(self.post_payload(datetime.now() + relativedelta(months=1)))
+        markets = ["sii", "otc", "rotc", "pub"]
+        dates = [datetime.now(), datetime.now() + relativedelta(months=1)]
+        for market, payload_date in list(itertools.product(markets, dates)):
+            payload.append(self.post_payload(market, payload_date))
 
         self.rs = _requests_session(self.config)
         dfs = []
         sleep = 0
         for post_data in payload:
             dfs.append(self.get_conf(post_data))
-            if sleep == 0:
+            if sleep < len(payload)-1:
                 time.sleep(random.uniform(min_sleep, max_sleep))
                 sleep += 1
 
         df_conf = [x for x in dfs if x is not None]
-        if len(df_conf) == 2:
-            df_future = df_conf[0].append(df_conf[1], ignore_index=True)
-        elif len(df_conf) == 1:
+        if len(df_conf) == 1:
             df_future = df_conf[0]
+        elif len(df_conf) > 1:
+            df_future = df_conf[0].append(df_conf[1:], ignore_index=True)
         else:
             print("近月無資料")
             sys.exit()
@@ -236,6 +255,7 @@ class mops_conf:
         df_c["中文簡報"] = df_1_not_2["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
         df_c["英文簡報"] = df_1_not_2["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
         df_c["公司網站相關資訊"] = df_1_not_2["公司網站相關資訊"].apply(lambda x: self.hyperlink(x, "{}".format(x, x)) if "無" not in x else x)
+        df_c["影音連結"] = df_1_not_2["影音連結"].apply(lambda x: self.hyper_url(x))
 
         df_c.to_html(self.new_path, index=False)
         self.html_utf8_convert(self.new_path)
