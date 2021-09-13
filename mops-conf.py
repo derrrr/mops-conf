@@ -37,10 +37,6 @@ def multiple_replace(sub_dict, text):
      # For each match, look-up corresponding value in dictionary
     return regex.sub(lambda mo: sub_dict[mo.string[mo.start():mo.end()]], text)
 
-def mkdirs(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
 def date_to_datetime(x):
     return datetime(x.year, x.month, x.day)
 
@@ -71,7 +67,7 @@ class mops_conf:
         self.msg_dir = "./msg"
         dir_list = [self.conf_dir, self.new_dir, self.msg_dir]
         for i in dir_list:
-            mkdirs(i)
+            os.makedirs(i, exist_ok=True)
 
     def date_set(self):
         if 0 <= datetime.now().hour < 9:
