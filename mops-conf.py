@@ -168,8 +168,9 @@ class mops_conf:
         if not soup.find_all("table", {"class": "hasBorder"}):
             return
         else:
-            table = soup.find_all("table", {"class": "hasBorder"})[0]
-            df = pd.read_html(table.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
+            # table = soup.find_all("table", {"class": "hasBorder"})[0]
+            # df = pd.read_html(table.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
+            df = pd.read_html(soup.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
             df.columns = df.columns.droplevel()
             cols = ["代號", "名稱", "法說日期", "法說時間", "法說地點", "法說訊息", \
                 "中文簡報", "英文簡報", \
@@ -343,7 +344,7 @@ class mops_conf:
         # Send the message via an SMTP server
         s = smtplib.SMTP_SSL(smtp_server, 465)
         s.ehlo()
-        s.login(smtp_user,smtp_pass)
+        s.login(smtp_user, smtp_pass)
         s.sendmail(addr_from, receive, msg.as_string())
         s.quit()
         print("Email sent!\n")
