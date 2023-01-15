@@ -172,7 +172,6 @@ class mops_conf:
 
     def get_conf(self, payload):
         url = "https://mops.twse.com.tw/mops/web/t100sb02_1"
-        # res = self.rs.post(url, data=payload, verify=False)
         res = self.rs.post(url, data=payload)
         soup = BS(res.text, "lxml")
 
@@ -230,7 +229,7 @@ class mops_conf:
         if len(df_conf) == 1:
             df_future = df_conf[0]
         elif len(df_conf) > 1:
-            df_future = df_conf[0].append(df_conf[1:], ignore_index=True)
+            df_future = pd.concat(df_conf, ignore_index=True)
         else:
             print("近月無資料")
             sys.exit()
@@ -370,7 +369,7 @@ class mops_conf:
             self.xq_merge(df_coming)
             self.get_addition_conf()
             self.html_concat(update_time)
-            # self.mail()
+            self.mail()
             print("==完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
 
 mops = mops_conf()
