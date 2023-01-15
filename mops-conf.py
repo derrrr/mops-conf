@@ -40,6 +40,9 @@ def multiple_replace(sub_dict, text):
 def date_to_datetime(x):
     return datetime(x.year, x.month, x.day)
 
+def isHoliday(json_object, date_str):
+    return [obj for obj in json_object if obj["date"]==date_str][0]["isHoliday"]
+
 class mops_conf:
     def __init__(self):
         self.config = _load_config()
@@ -47,6 +50,14 @@ class mops_conf:
         self.date_set()
         self.path_set()
         self.xq_path = self.get_xq_path()
+
+    def is_tmw_holiday(self):
+        tomorrow = date.today() + timedelta(days=1)
+        tw_cal_url = "https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/{}.json".format(str(tomorrow.year))
+        rs = _requests_session(self.config)
+        tw_cal = rs.get(tw_cal_url).json()
+        tmw_str = datetime.strftime(tomorrow, "%Y%m%d")
+        return isHoliday(tw_cal, tmw_str)
 
     def hyperlink(self, text, url):
         return '<a href="{}">{}</a>'.format(url, text)
@@ -168,8 +179,6 @@ class mops_conf:
         if not soup.find_all("table", {"class": "hasBorder"}):
             return
         else:
-            # table = soup.find_all("table", {"class": "hasBorder"})[0]
-            # df = pd.read_html(table.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
             df = pd.read_html(soup.prettify(), header=None, attrs = {"class": "hasBorder"})[0]
             df.columns = df.columns.droplevel()
             cols = ["代號", "名稱", "法說日期", "法說時間", "法說地點", "法說訊息", \
@@ -353,12 +362,16 @@ class mops_conf:
         start_time = datetime.now().replace(microsecond=0)
         update_time = datetime.now()
 
-        df_coming = self.coming_conf()
-        self.xq_merge(df_coming)
-        self.get_addition_conf()
-        self.html_concat(update_time)
-        self.mail()
-        print("==完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
+        if self.is_tmw_holiday():
+            print("Tomorrow is holiday!")
+        else:
+            # time.sleep(random.uniform(0, 300))
+            df_coming = self.coming_conf()
+            self.xq_merge(df_coming)
+            self.get_addition_conf()
+            self.html_concat(update_time)
+            # self.mail()
+            print("==完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
 
 mops = mops_conf()
 mops.process()
