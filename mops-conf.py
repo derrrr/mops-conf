@@ -358,13 +358,12 @@ class mops_conf:
         print("Email sent!\n")
 
     def process(self):
-        start_time = datetime.now().replace(microsecond=0)
-        update_time = datetime.now()
-
         if self.is_tmw_holiday():
             print("Tomorrow is holiday!")
         else:
-            # time.sleep(random.uniform(0, 300))
+            time.sleep(random.uniform(0, 300))
+            start_time = datetime.now().replace(microsecond=0)
+            update_time = datetime.now()
             df_coming = self.coming_conf()
             self.xq_merge(df_coming)
             self.get_addition_conf()
