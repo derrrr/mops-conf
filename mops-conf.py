@@ -171,7 +171,7 @@ class mops_conf:
         return payload
 
     def get_conf(self, payload):
-        url = "https://mops.twse.com.tw/mops/web/t100sb02_1"
+        url = "https://mopsov.twse.com.tw/mops/web/t100sb02_1"
         res = self.rs.post(url, data=payload)
         soup = BS(res.text, "lxml")
 
@@ -196,8 +196,8 @@ class mops_conf:
             df_temp = df_future.fillna("", inplace=False)
 
             df_c = df_future.copy()
-            df_c["中文簡報"] = df_future["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
-            df_c["英文簡報"] = df_future["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
+            df_c["中文簡報"] = df_future["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mopsov.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
+            df_c["英文簡報"] = df_future["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mopsov.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
             df_c["公司網站相關資訊"] = df_future["公司網站相關資訊"].apply(lambda x: self.hyperlink(x, "{}".format(x, x)) if "無" not in x else x)
             if [i for i in df_temp.columns if i.startswith("影音連結")]:
                 df_c["影音連結"] = df_temp["影音連結"].apply(lambda x: self.hyper_url(x))
@@ -257,8 +257,8 @@ class mops_conf:
         df_1_not_2 = df_1_not_2.drop(list(df_1_not_2.filter(regex = "_")), axis = 1, inplace = False).fillna("", inplace=False)
 
         df_c = df_1_not_2.copy()
-        df_c["中文簡報"] = df_1_not_2["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
-        df_c["英文簡報"] = df_1_not_2["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mops.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
+        df_c["中文簡報"] = df_1_not_2["中文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mopsov.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
+        df_c["英文簡報"] = df_1_not_2["英文簡報"].apply(lambda x: self.hyperlink(x, "{}{}".format("http://mopsov.twse.com.tw/nas/STR/", x)) if "內容" not in x else "")
         df_c["公司網站相關資訊"] = df_1_not_2["公司網站相關資訊"].apply(lambda x: self.hyperlink(x, "{}".format(x, x)) if "無" not in x else x)
         df_c["影音連結"] = df_1_not_2["影音連結"].apply(lambda x: self.hyper_url(x))
 
@@ -372,4 +372,4 @@ class mops_conf:
             print("==完成 花費時間: {}==".format(str(datetime.now().replace(microsecond=0) - start_time)))
 
 mops = mops_conf()
-mops.process()
+mopsov.process()
